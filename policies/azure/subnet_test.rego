@@ -14,7 +14,7 @@ test_warns_on_bad_name if {
 }
 
 test_silent_on_good_name if {
-	count(warn) == 0 with input as _c("snet-app-vnet-ldo-uks-prd-01")
+	count(warn) == 0 with input as _c("snet-app-vnet-ldo-uks-prd-001")
 }
 
 test_silent_when_name_unknown if {

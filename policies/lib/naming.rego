@@ -16,14 +16,14 @@ env_codes := {"poc", "mvp", "dev", "tst", "stg", "uat", "ppd", "prd"}
 #   infix:     2-4 char product/team code
 #   outfix:    2-3 char Azure region code (uks, euw, ...)
 #   optional:  short functional qualifier (mgt, sec, ...)
-#   numbering: zero-padded ordinal
+#   numbering: zero-padded ordinal, three digits or more (001, 002, ... per current CAF guidance)
 infix_re := `[a-z0-9]{2,4}`
 
 outfix_re := `[a-z]{2,3}`
 
 optional_re := `[a-z]{2,4}`
 
-numbering_re := `[0-9]{2,}`
+numbering_re := `[0-9]{3,}`
 
 # Alternation of the approved environment codes, for example (poc|mvp|dev|...).
 env_re := sprintf("(%s)", [concat("|", [code | some code in env_codes])])
@@ -48,11 +48,11 @@ valid(name, prefix, "nodash") if regex.match(nodash_re(prefix), name)
 valid(name, _, "subnet") if regex.match(subnet_re, name)
 
 # Human-readable expected form, used in warning messages.
-expected(prefix, "dashed") := sprintf("%s-<infix>-<outfix>-<suffix>[-<optional>][-<NN>]", [prefix])
+expected(prefix, "dashed") := sprintf("%s-<infix>-<outfix>-<suffix>[-<optional>][-<NNN>]", [prefix])
 
-expected(prefix, "nodash") := sprintf("%s<infix><outfix><suffix>[<optional>][<NN>]", [prefix])
+expected(prefix, "nodash") := sprintf("%s<infix><outfix><suffix>[<optional>][<NNN>]", [prefix])
 
-expected(_, "subnet") := "snet-<purpose>-vnet-<infix>-<outfix>-<suffix>[-<NN>]"
+expected(_, "subnet") := "snet-<purpose>-vnet-<infix>-<outfix>-<suffix>[-<NNN>]"
 
 # offenders(changes, tf_type, prefix, style) returns {address, name} objects for managed resources
 # of tf_type whose name is known at plan time and does not satisfy the convention. Resources whose

@@ -18,7 +18,16 @@ test_silent_on_good_name if {
 }
 
 test_silent_on_good_name_with_optional_and_number if {
-	count(warn) == 0 with input as _change("rg-ldo-uks-prd-mgt-01")
+	count(warn) == 0 with input as _change("rg-ldo-uks-prd-mgt-001")
+}
+
+test_silent_on_three_digit_number if {
+	count(warn) == 0 with input as _change("rg-ldo-uks-prd-001")
+}
+
+test_warns_on_legacy_two_digit_number if {
+	# The ordinal must be three digits now (001), so a legacy two-digit ordinal no longer matches.
+	count(warn) == 1 with input as _change("rg-ldo-uks-prd-01")
 }
 
 test_silent_when_name_unknown if {
