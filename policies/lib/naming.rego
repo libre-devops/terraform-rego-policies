@@ -47,12 +47,18 @@ valid(name, prefix, "nodash") if regex.match(nodash_re(prefix), name)
 
 valid(name, _, "subnet") if regex.match(subnet_re, name)
 
+# Prefix-only construct: ${prefix}-${derived name}, for resources named after another resource rather
+# than the structured convention (for example a diagnostic setting: diag-<target resource name>).
+valid(name, prefix, "prefix") if regex.match(sprintf("^%s-.+$", [prefix]), name)
+
 # Human-readable expected form, used in warning messages.
 expected(prefix, "dashed") := sprintf("%s-<infix>-<outfix>-<suffix>[-<optional>][-<NNN>]", [prefix])
 
 expected(prefix, "nodash") := sprintf("%s<infix><outfix><suffix>[<optional>][<NNN>]", [prefix])
 
 expected(_, "subnet") := "snet-<purpose>-vnet-<infix>-<outfix>-<suffix>[-<NNN>]"
+
+expected(prefix, "prefix") := sprintf("%s-<resource name>", [prefix])
 
 # offenders(changes, tf_type, prefix, style) returns {address, name} objects for managed resources
 # of tf_type whose name is known at plan time and does not satisfy the convention. Resources whose
