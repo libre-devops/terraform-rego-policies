@@ -17,6 +17,70 @@
       "name": "good",
       "provider_name": "registry.terraform.io/hashicorp/azurerm",
       "change": { "actions": ["create"], "before": null, "after": { "name": "rg-ldo-uks-prd", "location": "uksouth" } }
+    },
+    {
+      "address": "azurerm_network_security_rule.any_any",
+      "mode": "managed",
+      "type": "azurerm_network_security_rule",
+      "name": "any_any",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": { "actions": ["create"], "before": null, "after": { "name": "allow-everything", "access": "Allow", "direction": "Inbound", "source_address_prefix": "*", "destination_port_range": "*" } }
+    },
+    {
+      "address": "azurerm_network_security_rule.open_ssh",
+      "mode": "managed",
+      "type": "azurerm_network_security_rule",
+      "name": "open_ssh",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": { "actions": ["create"], "before": null, "after": { "name": "allow-ssh", "access": "Allow", "direction": "Inbound", "source_address_prefix": "Internet", "destination_port_range": "22" } }
+    },
+    {
+      "address": "azurerm_role_assignment.wide_owner",
+      "mode": "managed",
+      "type": "azurerm_role_assignment",
+      "name": "wide_owner",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": { "actions": ["create"], "before": null, "after": { "role_definition_name": "Owner", "scope": "/subscriptions/00000000-0000-0000-0000-000000000000" } }
+    },
+    {
+      "address": "azurerm_key_vault.access_policies",
+      "mode": "managed",
+      "type": "azurerm_key_vault",
+      "name": "access_policies",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": { "actions": ["create"], "before": null, "after": { "name": "kv-ldo-uks-prd-001", "rbac_authorization_enabled": false, "purge_protection_enabled": false } }
+    },
+    {
+      "address": "azurerm_storage_account.insecure",
+      "mode": "managed",
+      "type": "azurerm_storage_account",
+      "name": "insecure",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": { "actions": ["create"], "before": null, "after": { "name": "stldouksprd001", "https_traffic_only_enabled": false, "min_tls_version": "TLS1_0", "allow_nested_items_to_be_public": true } }
+    },
+    {
+      "address": "azurerm_application_insights.legacy",
+      "mode": "managed",
+      "type": "azurerm_application_insights",
+      "name": "legacy",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": { "actions": ["create"], "before": null, "after": { "name": "appi-ldo-uks-prd-001", "local_authentication_enabled": true } }
+    },
+    {
+      "address": "azurerm_user_assigned_identity.good",
+      "mode": "managed",
+      "type": "azurerm_user_assigned_identity",
+      "name": "good",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": { "actions": ["create"], "before": null, "after": { "name": "id-ldo-uks-prd-001", "location": "uksouth" } }
+    },
+    {
+      "address": "azurerm_ssh_public_key.bad",
+      "mode": "managed",
+      "type": "azurerm_ssh_public_key",
+      "name": "bad",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": { "actions": ["create"], "before": null, "after": { "name": "my-ssh-key", "location": "uksouth" } }
     }
   ]
 }

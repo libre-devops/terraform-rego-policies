@@ -7,89 +7,101 @@
   </picture>
 </a>
 
-# Custom Policies
+# Terraform Rego Policies
 
-Conftest/OPA (Rego) policies for Libre DevOps Terraform, starting with the Azure naming convention.
+Conftest/OPA (Rego) policies for Terraform plans: the Libre DevOps Azure naming convention plus
+early-warning security checks. Azure (azurerm) today; the layout leaves room for more providers.
 
-[![CI](https://github.com/libre-devops/custom-policies/actions/workflows/ci.yml/badge.svg)](https://github.com/libre-devops/custom-policies/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/libre-devops/custom-policies?sort=semver&label=release)](https://github.com/libre-devops/custom-policies/releases/latest)
-[![License](https://img.shields.io/github/license/libre-devops/custom-policies)](./LICENSE)
+[![CI](https://github.com/libre-devops/terraform-rego-policies/actions/workflows/ci.yml/badge.svg)](https://github.com/libre-devops/terraform-rego-policies/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/libre-devops/terraform-rego-policies?sort=semver&label=release)](https://github.com/libre-devops/terraform-rego-policies/releases/latest)
+[![License](https://img.shields.io/github/license/libre-devops/terraform-rego-policies)](./LICENSE)
 
 </div>
 
 ---
-
-> **Status: active development.** Interfaces may change until the first tagged release.
 
 ## Overview
 
 These are [Conftest](https://www.conftest.dev/) / [OPA](https://www.openpolicyagent.org/) policies
 written in Rego and evaluated against a Terraform plan rendered to JSON
-(`terraform show -json plan.bin > plan.json`). The plan JSON exposes the real resource name values
-(`resource_changes[].change.after.name`), which is what a naming convention checks, so this is the
-right layer for it (Trivy's config scanner does not expose resource names).
+(`terraform show -json plan.bin > plan.json`). The plan JSON exposes the real resource attribute
+values (`resource_changes[].change.after`), which is the right layer for naming conventions and for
+catching configuration that scanners without plan context miss.
 
-The first policy set enforces the
-[Libre DevOps Azure naming convention](https://libredevops.org/docs/documents/azure-naming-convention):
-`${prefix}-${infix}-${outfix}-${suffix}[-${optional}][-${numbering}]` for dashed resources (for
-example `rg-ldo-uks-prd`), and the no-dash form for resources that prohibit hyphens (storage
-accounts, VMs: `saldouksprd01`).
-
-Naming checks are **informational**: they are Conftest `warn` rules, so they are listed in the
-report but do not fail the build. Hard, build-failing rules would be `deny` rules.
+Every policy is **informational** (`warn`): findings surface in the report but never fail the build.
+That is deliberate; see [Turning warnings into errors](#turning-warnings-into-errors) for the
+escalation path.
 
 ## Layout
 
 ```
 policies/
-  lib/naming.rego          shared convention helpers (regex parts, valid(), offenders(), message())
-  azure/<resource>.rego    one file per resource type (resource_group, virtual_network, ...)
-  azure/<resource>_test.rego  Rego unit tests for that resource
+  lib/            shared helpers (naming construct, security predicates)
+  azure/
+    naming/       one policy per resource type, Libre DevOps naming convention
+    security/     early-warning security checks
 ```
 
-One file per resource keeps the set maintainable as every resource type in the convention is added
-over time.
+The directory per provider (`azure/`) is the extension point: policies for other providers get their
+own tree with the same naming/security split.
 
-## Usage
+## The policies
 
-Render a plan to JSON and evaluate the policies against it:
+**Naming** (`libredevops.naming.*`): one small file per resource type, all driven by
+[`lib/naming.rego`](./policies/lib/naming.rego), which encodes the
+[Libre DevOps Azure naming convention](https://libredevops.org/docs/documents/azure-naming-convention/).
+Names that are unknown at plan time are skipped (there is nothing to check yet). Built per module as
+the module library is refactored, so the rego, the published convention, and the modules stay in
+lockstep.
+
+**Security** (`libredevops.security.*`): early-detection warnings for the obvious flaws, checked
+where the plan actually shows them:
+
+| Policy | Flags |
+| --- | --- |
+| `network_security_rule_any_any` | Inbound Allow from anywhere to every port (standalone rules and inline `security_rule` blocks) |
+| `network_security_rule_management_ports` | SSH (22) or RDP (3389) exposed to the internet, including inside port ranges and lists |
+| `role_assignment_broad_privilege` | Owner / User Access Administrator / RBAC Administrator granted at a whole subscription or management group (by role name or GUID) |
+| `key_vault_rbac_disabled` | Vaults using access policies instead of RBAC authorization |
+| `key_vault_purge_protection_disabled` | Vaults a purge away from losing soft-deleted material |
+| `storage_account_insecure_transport` | Plaintext HTTP allowed, or a TLS 1.0/1.1 floor |
+| `storage_public_blob_access` | Accounts permitting public nested items; containers with anonymous access |
+| `application_insights_local_auth` | Components accepting instrumentation-key ingestion instead of the RBAC posture |
+
+## Using the policies
+
+The [`libre-devops/terraform-azure`](https://github.com/libre-devops/terraform-azure) action runs
+these automatically against every plan (it clones this repo, `main` by default, and executes
+`conftest test <plan>.json --policy policies --all-namespaces`). Locally:
 
 ```bash
-terraform plan -out plan.bin
-terraform show -json plan.bin > plan.json
+terraform plan -out tfplan.bin && terraform show -json tfplan.bin > plan.json
 conftest test plan.json --policy policies --all-namespaces
 ```
 
-Or via `just` (needs [`just`](https://github.com/casey/just) and `conftest`):
+## Turning warnings into errors
 
-- `just test` runs the Rego unit tests (hermetic, no cloud or real plan needed).
-- `just check plan.json` evaluates the policies against a plan JSON.
-- `just fmt` / `just fmt-check` format the Rego.
+Warnings never fail a build by default. Two escalation paths:
 
-## Adding a resource
+1. **Fail on any warning** without touching the policies: add `--fail-on-warn` to the conftest
+   invocation. Coarse but immediate.
 
-1. Create `policies/azure/<resource>.rego` in package `libredevops.naming.<resource>`, importing
-   `data.lib.naming`, and emit a `warn` from `naming.offenders(...)` with the resource's prefix slug
-   and dash style (`"dashed"`, `"nodash"`, or `"subnet"`).
-2. Add `policies/azure/<resource>_test.rego` with a good name, a bad name, and an unknown-name case.
-3. Run `just test`.
+   ```bash
+   conftest test plan.json --policy policies --all-namespaces --fail-on-warn
+   ```
 
-## Contributing
+2. **Escalate specific policies**: fork or vendor this repo and change `warn contains msg if {` to
+   `deny contains msg if {` in the policies you want to be blocking; conftest exits non-zero on any
+   deny. This keeps the rest informational and is the right long-term shape for a policy you have
+   finished rolling out.
 
-Issues and pull requests are welcome. Please read the
-[Libre DevOps standards](https://libredevops.org/docs/documents) and keep changes consistent with
-them. Run `just test` before opening a pull request.
+## Developing
 
-## License
+Run `just` to list recipes: `just fmt` / `just fmt-check` (Rego formatting), `just test` (the
+hermetic unit tests; no cloud or real plan needed), and `just check plan.json` (evaluate against a
+real plan JSON). CI runs formatting, the unit tests, and a smoke test of the full policy set against
+[`test/fixtures/plan.json`](./test/fixtures/plan.json), so a syntax error or evaluation failure can
+never reach a consumer build.
 
-Released under the [MIT License](./LICENSE).
-
----
-
-<div align="center">
-<sub>
-Part of <a href="https://libredevops.org">Libre DevOps</a>: free, open, and opinionated DevOps
-tooling and standards. This project is provided as-is, without warranty; review and test it
-against your own requirements before use in production.
-</sub>
-</div>
+Releases are by tag (`just increment-release [patch|minor|major]`); the action tracks `main` by
+default so new policies apply automatically, and consumers wanting stability pin a tag.

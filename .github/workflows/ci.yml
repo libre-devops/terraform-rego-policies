@@ -28,3 +28,9 @@ jobs:
 
       - name: Run policy unit tests
         run: conftest verify --policy policies
+
+      # Smoke test: the whole policy set evaluates a representative plan JSON end to end. Warnings
+      # are expected (the fixture deliberately violates several policies); the step fails only on
+      # evaluation errors or deny results, so builds never break on informational findings.
+      - name: Smoke test against the fixture plan
+        run: conftest test test/fixtures/plan.json --policy policies --all-namespaces
