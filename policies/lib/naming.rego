@@ -47,6 +47,13 @@ valid(name, prefix, "nodash") if regex.match(nodash_re(prefix), name)
 
 valid(name, _, "subnet") if regex.match(subnet_re, name)
 
+# Purposed construct: ${prefix}-${purpose}-${infix}-${outfix}-${suffix}[-${numbering}], for
+# resources whose name leads with a functional purpose slug (for example a virtual machine:
+# vm-app-ldo-uks-prd-001). The OS computer name is the flattened no-dash form of the same parts.
+purposed_re(prefix) := sprintf("^%s-[a-z0-9]{2,10}-%s-%s-%s(-%s)?$", [prefix, infix_re, outfix_re, env_re, numbering_re])
+
+valid(name, prefix, "purposed") if regex.match(purposed_re(prefix), name)
+
 # Prefix-only construct: ${prefix}-${derived name}, for resources named after another resource rather
 # than the structured convention (for example a diagnostic setting: diag-<target resource name>).
 valid(name, prefix, "prefix") if regex.match(sprintf("^%s-.+$", [prefix]), name)
@@ -57,6 +64,8 @@ expected(prefix, "dashed") := sprintf("%s-<infix>-<outfix>-<suffix>[-<optional>]
 expected(prefix, "nodash") := sprintf("%s<infix><outfix><suffix>[<optional>][<NNN>]", [prefix])
 
 expected(_, "subnet") := "snet-<purpose>-vnet-<infix>-<outfix>-<suffix>[-<NNN>]"
+
+expected(prefix, "purposed") := sprintf("%s-<purpose>-<infix>-<outfix>-<suffix>[-<NNN>]", [prefix])
 
 expected(prefix, "prefix") := sprintf("%s-<resource name>", [prefix])
 
