@@ -10,7 +10,7 @@
 # Terraform Rego Policies
 
 Conftest/OPA (Rego) policies for Terraform plans: the Libre DevOps Azure naming convention plus
-early-warning security checks. Azure (azurerm) today; the layout leaves room for more providers.
+early-warning security checks. Azure today; the layout leaves room for more providers.
 
 [![CI](https://github.com/libre-devops/terraform-rego-policies/actions/workflows/ci.yml/badge.svg)](https://github.com/libre-devops/terraform-rego-policies/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/libre-devops/terraform-rego-policies?sort=semver&label=release)](https://github.com/libre-devops/terraform-rego-policies/releases/latest)
@@ -52,7 +52,10 @@ own tree with the same naming/security split.
 [Libre DevOps Azure naming convention](https://libredevops.org/docs/documents/azure-naming-convention/).
 Names that are unknown at plan time are skipped (there is nothing to check yet). Built per module as
 the module library is refactored, so the rego, the published convention, and the modules stay in
-lockstep.
+lockstep. Most policies match `azurerm_*` resource types; where a Libre DevOps module manages a
+resource with azapi instead, the policy also matches the `azapi_resource` form by its ARM type (the
+AI Foundry project policy covers both `azurerm_cognitive_account_project` and
+`Microsoft.CognitiveServices/accounts/projects`).
 
 **Security** (`libredevops.security.*`): early-detection warnings for the obvious flaws, checked
 where the plan actually shows them:
