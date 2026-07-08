@@ -9,8 +9,9 @@
 
 # Terraform Rego Policies
 
-Conftest/OPA (Rego) policies for Terraform plans: the Libre DevOps Azure naming convention plus
-early-warning security checks. Azure today; the layout leaves room for more providers.
+Conftest/OPA (Rego) policies for Terraform plans: the Libre DevOps Azure naming convention,
+early-warning security checks, and the Libre DevOps Logic App standard. Azure today; the layout
+leaves room for more providers.
 
 [![CI](https://github.com/libre-devops/terraform-rego-policies/actions/workflows/ci.yml/badge.svg)](https://github.com/libre-devops/terraform-rego-policies/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/libre-devops/terraform-rego-policies?sort=semver&label=release)](https://github.com/libre-devops/terraform-rego-policies/releases/latest)
@@ -40,6 +41,7 @@ policies/
   azure/
     naming/       one policy per resource type, Libre DevOps naming convention
     security/     early-warning security checks
+    logic_app/    Libre DevOps Logic App standard checks
 ```
 
 The directory per provider (`azure/`) is the extension point: policies for other providers get their
@@ -70,6 +72,20 @@ where the plan actually shows them:
 | `storage_account_insecure_transport` | Plaintext HTTP allowed, or a TLS 1.0/1.1 floor |
 | `storage_public_blob_access` | Accounts permitting public nested items; containers with anonymous access |
 | `application_insights_local_auth` | Components accepting instrumentation-key ingestion instead of the RBAC posture |
+
+**Logic App standard** (`libredevops.logicapp.*`): enforcement of the
+[Libre DevOps Logic App standard](https://libredevops.org/docs/documents/azure-logic-app-standards/)
+for Consumption and Standard Logic Apps, all driven by
+[`lib/logicapp.rego`](./policies/lib/logicapp.rego). The content-aware checks decode the action and
+trigger `body` (a JSON string in the plan) and walk it, so nested actions inside a `Scope` are
+covered too:
+
+| Policy | Flags |
+| --- | --- |
+| `required_tags` | A Logic App (Consumption or Standard) missing any of `hidden-title`, `environment`, `managed-by` |
+| `managed_identity` | A Logic App with no managed identity (SystemAssigned or UserAssigned) configured |
+| `action_retry_policy` | An external call (an action of type Http or ApiConnection, at any nesting depth) with no explicit `retryPolicy` |
+| `no_hardcoded_connection_id` | An action or trigger body embedding a literal `Microsoft.Web/connections/...` id instead of `@parameters('$connections')[...]['connectionId']` |
 
 ## Using the policies
 
